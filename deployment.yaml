@@ -17,7 +17,7 @@ spec:
         app: portfolio
     spec:
       containers:
-      - image: aravind1843/portfolio:42ecbb0c22554eaf3a62044e7bad2e0331478b76
+      - image: aravind1843/portfolio:5af53b005f4f3007f7dc67bc989be51eef23c71a
         name: portfolio
         imagePullPolicy: Always
         ports:
