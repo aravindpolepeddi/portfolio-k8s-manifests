@@ -1,0 +1,108 @@
+# # kubectl apply -f https://raw.githubusercontent.com/open-policy-agent/gatekeeper/master/deploy/gatekeeper.yaml
+# This installs **OPA Gatekeeper itself** — the infrastructure/engine that makes policy enforcement work.
+# ## **It installs:**
+
+# 1. **Gatekeeper controller** (pods in `gatekeeper-system` namespace)
+# 2. **Webhook** (intercepts pod creation requests)
+# 3. **Base CRDs** (ConstraintTemplate, Config, etc.)
+# 4. **RBAC** (permissions for Gatekeeper to work)
+
+
+# ---
+# Step 1: Install Gatekeeper 
+# Step 2: Create ConstraintTemplate (defines k8spspprivileged)
+# Step 3: Create Constraint (uses k8spspprivileged)
+
+
+# yaml-language-server: $schema=none
+
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sPSPPrivileged
+metadata:
+  name: no-privileged-containers
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces: ["portfolio-dev"]
+  # parameters:
+  #   cpu: "200m"
+  #   memory: "256Mi" # Prevents Pi 3 from running out of RAM
+
+
+---
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8spspprivileged
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sPSPPrivileged
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8spspprivileged
+
+        violation[{"msg": msg}] {
+        container := input.review.object.spec.containers[_]
+    
+        # Check if privileged is explicitly set to true
+        container.securityContext.privileged == true
+    
+        msg := sprintf("Container '%v' is privileged. Privileged containers are disallowed on this Raspberry Pi cluster.", [container.name])
+        }
+
+---
+
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredresources
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredResources
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredresources
+        
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not container.resources.limits.memory
+          msg := sprintf("Container '%v' missing memory limit", [container.name])
+        }
+        
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not container.resources.limits.cpu
+          msg := sprintf("Container '%v' missing CPU limit", [container.name])
+        }
+        
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not container.resources.requests.memory
+          msg := sprintf("Container '%v' missing memory request", [container.name])
+        }
+        
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not container.resources.requests.cpu
+          msg := sprintf("Container '%v' missing CPU request", [container.name])
+        }
+
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredResources
+metadata:
+  name: required-resources
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces: ["portfolio-dev"]
