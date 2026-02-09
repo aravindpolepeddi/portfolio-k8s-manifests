@@ -3,16 +3,16 @@ kind: Ingress
 metadata:
   name: portfolio-ingress
   namespace: portfolio-dev
-  # annotations:
-  #   cert-manager.io/cluster-issuer: "letsencrypt-prod"
-  #   nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
-  # tls:
-  # - hosts:
-  #   - aravindpolepeddi.uk
-  #   - www.aravindpolepeddi.uk
-  #   secretName: portfolio-tls
+  tls:
+  - hosts:
+    - aravindpolepeddi.uk
+    - www.aravindpolepeddi.uk
+    secretName: portfolio-tls
   rules:
   - host: aravindpolepeddi.uk
     http:
